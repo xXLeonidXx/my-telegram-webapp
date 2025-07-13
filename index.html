@@ -2,59 +2,81 @@
 <html lang="ru">
 <head>
   <meta charset="UTF-8" />
-  <title>Змейка с кнопками управления и выбором скорости</title>
+  <title>Змейка с меню и выбором скорости</title>
   <style>
-    canvas {
-      border: 1px solid #000;
-      display: block;
+    body {
+      font-family: Arial, sans-serif;
+      text-align: center;
+      background: #f0f0f0;
+      margin: 0;
+      padding: 20px;
+    }
+    #game, #gameOverMessage {
       margin: 20px auto;
+      display: none;
+      background: #eee;
+      border: 1px solid #000;
+    }
+    canvas {
+      display: block;
+      margin: 0 auto;
       background: #eee;
     }
-    .controls {
-      text-align: center;
-      margin-top: 10px;
+    .menu, .speed-menu, .controls {
+      margin-top: 20px;
     }
-    .controls button,
-    .controls select {
+    button, select {
       font-size: 18px;
-      margin: 5px;
-      padding: 10px 15px;
+      padding: 10px 20px;
+      margin: 10px;
       cursor: pointer;
     }
     #gameOverMessage {
-      text-align: center;
       font-size: 24px;
       color: red;
-      display: none;
-      margin-top: 10px;
-    }
-    label {
-      font-size: 18px;
-      margin-right: 10px;
     }
   </style>
 </head>
 <body>
 
+<!-- Стартовое меню -->
+<div id="mainMenu" class="menu">
+  <h1>Змейка</h1>
+  <button id="startGameBtn">Старт игры</button>
+  <button id="chooseSpeedBtn">Выбор скорости</button>
+</div>
+
+<!-- Меню выбора скорости -->
+<div id="speedMenu" class="speed-menu" style="display:none;">
+  <h2>Выберите скорость змейки</h2>
+  <select id="speedSelect">
+    <option value="300">1 (медленно)</option>
+    <option value="270">2</option>
+    <option value="240">3</option>
+    <option value="210">4</option>
+    <option value="180">5</option>
+    <option value="150">6</option>
+    <option value="120">7</option>
+    <option value="90">8</option>
+    <option value="60">9</option>
+    <option value="30">10 (быстро)</option>
+  </select>
+  <br/>
+  <button id="backToMenuBtn">Назад в меню</button>
+</div>
+
+<!-- Игровое поле -->
 <canvas id="game" width="400" height="400"></canvas>
 
-<div class="controls">
-  <div>
-    <label for="speedSelect">Скорость змейки (уровень):</label>
-    <select id="speedSelect">
-      <option value="300">1 (медленно)</option>
-      <option value="270">2</option>
-      <option value="240">3</option>
-      <option value="210">4</option>
-      <option value="180">5</option>
-      <option value="150">6</option>
-      <option value="120">7</option>
-      <option value="90">8</option>
-      <option value="60">9</option>
-      <option value="30">10 (быстро)</option>
-    </select>
-  </div>
+<!-- Сообщение об окончании игры -->
+<div id="gameOverMessage">
+  Игра окончена!<br/>
+  <button id="restartBtn">Начать заново</button>
+  <button id="exitToMenuBtn">Выйти в меню</button>
+</div>
 
+<!-- Кнопки управления -->
+<div id="controls" class="controls" style="display:none;">
   <div>
     <button id="upBtn">↑ Вверх</button>
   </div>
@@ -65,26 +87,37 @@
   </div>
 </div>
 
-<div id="gameOverMessage">
-  Игра окончена!<br/>
-  <button id="restartBtn">Начать заново</button>
-</div>
-
 <script>
   const canvas = document.getElementById('game');
   const ctx = canvas.getContext('2d');
-  const box = 20; // размер клетки
+  const box = 20;
 
   let snake;
   let direction;
   let food;
   let gameInterval;
-  let speed = 300; // стартовая скорость (мс)
+  let speed = 300; // стартовая скорость
 
+  // Элементы интерфейса
+  const mainMenu = document.getElementById('mainMenu');
+  const speedMenu = document.getElementById('speedMenu');
   const gameOverMessage = document.getElementById('gameOverMessage');
+  const controls = document.getElementById('controls');
+
+  const startGameBtn = document.getElementById('startGameBtn');
+  const chooseSpeedBtn = document.getElementById('chooseSpeedBtn');
+  const backToMenuBtn = document.getElementById('backToMenuBtn');
   const restartBtn = document.getElementById('restartBtn');
+  const exitToMenuBtn = document.getElementById('exitToMenuBtn');
+
   const speedSelect = document.getElementById('speedSelect');
 
+  const upBtn = document.getElementById('upBtn');
+  const downBtn = document.getElementById('downBtn');
+  const leftBtn = document.getElementById('leftBtn');
+  const rightBtn = document.getElementById('rightBtn');
+
+  // Инициализация игры
   function init() {
     snake = [
       { x: 9 * box, y: 10 * box },
@@ -99,6 +132,7 @@
     gameInterval = setInterval(draw, speed);
   }
 
+  // Появление еды
   function placeFood() {
     food = {
       x: Math.floor(Math.random() * 20) * box,
@@ -106,15 +140,16 @@
     };
   }
 
+  // Отрисовка кадра
   function draw() {
     ctx.fillStyle = '#eee';
     ctx.fillRect(0, 0, canvas.width, canvas.height);
 
-    // Рисуем еду
+    // Еда
     ctx.fillStyle = 'red';
     ctx.fillRect(food.x, food.y, box, box);
 
-    // Рисуем змейку
+    // Змейка
     for (let i = 0; i < snake.length; i++) {
       ctx.fillStyle = i === 0 ? 'green' : 'lime';
       ctx.fillRect(snake[i].x, snake[i].y, box, box);
@@ -122,7 +157,7 @@
       ctx.strokeRect(snake[i].x, snake[i].y, box, box);
     }
 
-    // Двигаем змейку
+    // Новая позиция головы
     let headX = snake[0].x;
     let headY = snake[0].y;
 
@@ -131,7 +166,7 @@
     else if (direction === 'UP') headY -= box;
     else if (direction === 'DOWN') headY += box;
 
-    // Проверка столкновений с границами и телом змейки
+    // Проверка столкновений
     if (
       headX < 0 ||
       headX >= canvas.width ||
@@ -145,17 +180,15 @@
 
     // Проверка съедания еды
     if (headX === food.x && headY === food.y) {
-      // Не удаляем хвост — змейка растёт
       placeFood();
     } else {
-      // Удаляем последний элемент
       snake.pop();
     }
 
-    // Добавляем новую голову
     snake.unshift({ x: headX, y: headY });
   }
 
+  // Проверка столкновения с телом
   function collision(x, y, array) {
     for (let i = 0; i < array.length; i++) {
       if (array[i].x === x && array[i].y === y) return true;
@@ -163,10 +196,54 @@
     return false;
   }
 
+  // Окончание игры
   function gameOver() {
     clearInterval(gameInterval);
     gameOverMessage.style.display = 'block';
+    controls.style.display = 'none';
+    canvas.style.display = 'none';
   }
+
+  // Запуск игры из меню
+  startGameBtn.addEventListener('click', () => {
+    mainMenu.style.display = 'none';
+    speedMenu.style.display = 'none';
+    gameOverMessage.style.display = 'none';
+    canvas.style.display = 'block';
+    controls.style.display = 'block';
+    init();
+  });
+
+  // Показ меню выбора скорости
+  chooseSpeedBtn.addEventListener('click', () => {
+    mainMenu.style.display = 'none';
+    speedMenu.style.display = 'block';
+  });
+
+  // Возврат в главное меню из меню скорости
+  backToMenuBtn.addEventListener('click', () => {
+    speedMenu.style.display = 'none';
+    mainMenu.style.display = 'block';
+  });
+
+  // Перезапуск игры после окончания
+  restartBtn.addEventListener('click', () => {
+    gameOverMessage.style.display = 'none';
+    canvas.style.display = 'block';
+    controls.style.display = 'block';
+    init();
+  });
+
+  // Выход в меню из экрана Game Over
+  exitToMenuBtn.addEventListener('click', () => {
+    gameOverMessage.style.display = 'none';
+    mainMenu.style.display = 'block';
+  });
+
+  // Обработка изменения скорости
+  speedSelect.addEventListener('change', () => {
+    speed = +speedSelect.value;
+  });
 
   // Управление с клавиатуры
   document.addEventListener('keydown', e => {
@@ -178,37 +255,21 @@
   });
 
   // Управление кнопками
-  document.getElementById('upBtn').addEventListener('click', () => {
+  upBtn.addEventListener('click', () => {
     if (direction !== 'DOWN') direction = 'UP';
   });
-  document.getElementById('downBtn').addEventListener('click', () => {
+  downBtn.addEventListener('click', () => {
     if (direction !== 'UP') direction = 'DOWN';
   });
-  document.getElementById('leftBtn').addEventListener('click', () => {
+  leftBtn.addEventListener('click', () => {
     if (direction !== 'RIGHT') direction = 'LEFT';
   });
-  document.getElementById('rightBtn').addEventListener('click', () => {
+  rightBtn.addEventListener('click', () => {
     if (direction !== 'LEFT') direction = 'RIGHT';
   });
-
-  // Кнопка начать заново
-  restartBtn.addEventListener('click', () => {
-    init();
-  });
-
-  // Обработка изменения скорости
-  speedSelect.addEventListener('change', () => {
-    speed = +speedSelect.value;
-    // Перезапускаем игру с новой скоростью, если игра запущена
-    if (gameInterval) {
-      clearInterval(gameInterval);
-      gameInterval = setInterval(draw, speed);
-    }
-  });
-
-  // Запуск игры при загрузке страницы
-  init();
 </script>
 
 </body>
 </html>
+
+Найти еще
