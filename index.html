@@ -2,7 +2,7 @@
 <html lang="ru">
 <head>
   <meta charset="UTF-8" />
-  <title>Змейка с адаптивным масштабированием</title>
+  <title>Змейка с плавным движением и мгновенным поворотом</title>
   <style>
     body {
       font-family: Arial, sans-serif;
@@ -25,7 +25,6 @@
       display: block;
       margin: 0 auto;
       background: #eee;
-      /* размер будет задаваться скриптом */
     }
     .menu, .speed-menu, .controls {
       margin-top: 20px;
@@ -107,7 +106,7 @@
   <select id="speedSelect" aria-label="Выбор скорости змейки">
     <option value="300">1 (медленно)</option>
     <option value="270">2</option>
-    <option value="240">3</option>
+    <option value="240" selected>3</option>
     <option value="210">4</option>
     <option value="180">5</option>
     <option value="150">6</option>
@@ -146,18 +145,17 @@
   const canvas = document.getElementById('game');
   const ctx = canvas.getContext('2d');
 
-  // Фиксированное количество клеток по ширине и высоте
   const cols = 20;
   const rows = 20;
 
-  let box; // размер клетки (будет вычисляться динамически)
+  let box;
 
   let snake;
   let direction = 'RIGHT';
   let nextDirection = 'RIGHT';
   let food;
   let gameInterval;
-  let speed = 300;
+  let speed = 240; // скорость по умолчанию — 3-я
 
   let edgeDelayTimer = null;
   const edgeDelayMs = 300;
@@ -181,14 +179,11 @@
   const rightBtn = document.getElementById('rightBtn');
 
   function resizeCanvas() {
-    // Вычисляем максимально возможный размер клетки, чтобы вместить 20x20 клеток в окно
     const maxWidth = window.innerWidth * 0.9;
-    const maxHeight = (window.innerHeight - 200) * 0.9; // минус место под кнопки и меню
+    const maxHeight = (window.innerHeight - 200) * 0.9;
 
-    // Размер клетки — минимальный из доступной ширины и высоты, делённый на количество клеток
     box = Math.floor(Math.min(maxWidth / cols, maxHeight / rows));
 
-    // Устанавливаем размеры canvas
     canvas.width = box * cols;
     canvas.height = box * rows;
   }
@@ -208,7 +203,9 @@
     edgeDelayTimer = null;
 
     if (gameInterval) clearInterval(gameInterval);
-    gameInterval = setInterval(draw, speed);
+    gameInterval = setInterval(moveSnake, speed);
+
+    draw();
   }
 
   function placeFood() {
@@ -220,22 +217,8 @@
     } while (collision(food.x, food.y, snake));
   }
 
-  function draw() {
+  function moveSnake() {
     direction = nextDirection;
-
-    ctx.fillStyle = '#eee';
-    ctx.fillRect(0, 0, canvas.width, canvas.height);
-
-    ctx.fillStyle = 'red';
-    ctx.fillRect(food.x, food.y, box, box);
-
-    for (let i = 0; i < snake.length; i++) {
-      ctx.fillStyle = i === 0 ? 'green' : 'lime';
-      ctx.fillRect(snake[i].x, snake[i].y, box, box);
-      ctx.strokeStyle = '#000';
-      ctx.lineWidth = 1;
-      ctx.strokeRect(snake[i].x, snake[i].y, box, box);
-    }
 
     let headX = snake[0].x;
     let headY = snake[0].y;
@@ -258,6 +241,7 @@
         clearTimeout(edgeDelayTimer);
         edgeDelayTimer = null;
       }
+      draw();
       return;
     } else {
       if (edgeDelayTimer) {
@@ -278,6 +262,24 @@
     }
 
     snake.unshift({ x: headX, y: headY });
+
+    draw();
+  }
+
+  function draw() {
+    ctx.fillStyle = '#eee';
+    ctx.fillRect(0, 0, canvas.width, canvas.height);
+
+    ctx.fillStyle = 'red';
+    ctx.fillRect(food.x, food.y, box, box);
+
+    for (let i = 0; i < snake.length; i++) {
+      ctx.fillStyle = i === 0 ? 'green' : 'lime';
+      ctx.fillRect(snake[i].x, snake[i].y, box, box);
+      ctx.strokeStyle = '#000';
+      ctx.lineWidth = 1;
+      ctx.strokeRect(snake[i].x, snake[i].y, box, box);
+    }
   }
 
   function canTurnAwayFromEdge() {
@@ -362,54 +364,76 @@
     speed = +speedSelect.value;
     if (gameInterval) {
       clearInterval(gameInterval);
-      gameInterval = setInterval(draw, speed);
+      gameInterval = setInterval(moveSnake, speed);
     }
   });
 
+  // Обработчики клавиатуры — меняют направление и сразу обновляют отрисовку,
+  // но НЕ вызывают moveSnake(), чтобы избежать перескакивания клеток
   document.addEventListener('keydown', e => {
     const key = e.key;
-    if ((key === 'ArrowLeft' || key === 'a') && direction !== 'RIGHT') nextDirection = 'LEFT';
-    else if ((key === 'ArrowUp' || key === 'w') && direction !== 'DOWN') nextDirection = 'UP';
-    else if ((key === 'ArrowRight' || key === 'd') && direction !== 'LEFT') nextDirection = 'RIGHT';
-    else if ((key === 'ArrowDown' || key === 's') && direction !== 'UP') nextDirection = 'DOWN';
+    let changed = false;
+    if ((key === 'ArrowLeft' || key === 'a') && direction !== 'RIGHT') {
+      nextDirection = 'LEFT';
+      changed = true;
+    } else if ((key === 'ArrowUp' || key === 'w') && direction !== 'DOWN') {
+      nextDirection = 'UP';
+      changed = true;
+    } else if ((key === 'ArrowRight' || key === 'd') && direction !== 'LEFT') {
+      nextDirection = 'RIGHT';
+      changed = true;
+    } else if ((key === 'ArrowDown' || key === 's') && direction !== 'UP') {
+      nextDirection = 'DOWN';
+      changed = true;
+    }
+    if (changed) {
+      direction = nextDirection;
+      draw();
+    }
   });
 
+  // Кнопки управления — аналогично
   upBtn.addEventListener('click', () => {
-    if (direction !== 'DOWN') nextDirection = 'UP';
+    if (direction !== 'DOWN') {
+      nextDirection = 'UP';
+      direction = nextDirection;
+      draw();
+    }
   });
   downBtn.addEventListener('click', () => {
-    if (direction !== 'UP') nextDirection = 'DOWN';
+    if (direction !== 'UP') {
+      nextDirection = 'DOWN';
+      direction = nextDirection;
+      draw();
+    }
   });
   leftBtn.addEventListener('click', () => {
-    if (direction !== 'RIGHT') nextDirection = 'LEFT';
+    if (direction !== 'RIGHT') {
+      nextDirection = 'LEFT';
+      direction = nextDirection;
+      draw();
+    }
   });
   rightBtn.addEventListener('click', () => {
-    if (direction !== 'LEFT') nextDirection = 'RIGHT';
+    if (direction !== 'LEFT') {
+      nextDirection = 'RIGHT';
+      direction = nextDirection;
+      draw();
+    }
   });
 
-  // Обновляем размер canvas при изменении окна
   window.addEventListener('resize', () => {
-    // Чтобы не ломать положение змейки, пересчитаем координаты змейки и еды
-    // при изменении box
-
-    // Сохраним старый box
+    if (!snake) return;
     const oldBox = box;
     resizeCanvas();
-
-    if (!snake) return;
-
-    // Пересчитаем координаты змейки и еды в новых координатах
     snake = snake.map(segment => ({
       x: Math.floor(segment.x / oldBox) * box,
       y: Math.floor(segment.y / oldBox) * box
     }));
-
     food = {
       x: Math.floor(food.x / oldBox) * box,
       y: Math.floor(food.y / oldBox) * box
     };
-
-    // Перерисуем сразу
     draw();
   });
 </script>
