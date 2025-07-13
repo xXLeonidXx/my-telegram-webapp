@@ -1,0 +1,122 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1" />
+<title>Змейка для Telegram MiniApp</title>
+<style>
+  body { margin: 0; background: #222; display: flex; justify-content: center; align-items: center; height: 100vh; }
+  canvas { background: #111; display: block; }
+  #score { color: white; font-family: monospace; position: fixed; top: 10px; left: 10px; }
+</style>
+</head>
+<body>
+<div id="score">Счёт: 0</div>
+<canvas id="game" width="300" height="300"></canvas>
+
+<script>
+// Настройки
+const canvas = document.getElementById('game');
+const ctx = canvas.getContext('2d');
+const grid = 15;
+const width = canvas.width;
+const height = canvas.height;
+
+let snake = [{x: 7*grid, y: 7*grid}];
+let dx = grid;
+let dy = 0;
+let apple = {};
+let score = 0;
+let gameOver = false;
+
+function placeApple() {
+  apple.x = Math.floor(Math.random() * (width/grid)) * grid;
+  apple.y = Math.floor(Math.random() * (height/grid)) * grid;
+  if (snake.some(s => s.x === apple.x && s.y === apple.y)) placeApple();
+}
+
+function draw() {
+  if (gameOver) return;
+
+  const head = {x: snake[0].x + dx, y: snake[0].y + dy};
+
+  if (head.x < 0 || head.x >= width || head.y < 0 || head.y >= height) {
+    endGame();
+    return;
+  }
+
+  if (snake.some(s => s.x === head.x && s.y === head.y)) {
+    endGame();
+    return;
+  }
+
+  snake.unshift(head);
+
+  if (head.x === apple.x && head.y === apple.y) {
+    score++;
+    document.getElementById('score').textContent = 'Счёт: ' + score;
+    placeApple();
+  } else {
+    snake.pop();
+  }
+
+  ctx.fillStyle = '#111';
+  ctx.fillRect(0, 0, width, height);
+
+  ctx.fillStyle = '#0f0';
+  snake.forEach(s => ctx.fillRect(s.x, s.y, grid-1, grid-1));
+
+  ctx.fillStyle = '#f00';
+  ctx.fillRect(apple.x, apple.y, grid-1, grid-1);
+}
+
+function endGame() {
+  gameOver = true;
+  alert('Игра окончена! Ваш счёт: ' + score);
+}
+
+function changeDirection(e) {
+  const key = e.key;
+  if (key === 'ArrowUp' && dy === 0) { dx = 0; dy = -grid; }
+  else if (key === 'ArrowDown' && dy === 0) { dx = 0; dy = grid; }
+  else if (key === 'ArrowLeft' && dx === 0) { dx = -grid; dy = 0; }
+  else if (key === 'ArrowRight' && dx === 0) { dx = grid; dy = 0; }
+}
+
+let touchStartX = null;
+let touchStartY = null;
+
+function handleTouchStart(e) {
+  const t = e.touches[0];
+  touchStartX = t.clientX;
+  touchStartY = t.clientY;
+}
+
+function handleTouchMove(e) {
+  if (!touchStartX || !touchStartY) return;
+
+  const t = e.touches[0];
+  const dxTouch = t.clientX - touchStartX;
+  const dyTouch = t.clientY - touchStartY;
+
+  if (Math.abs(dxTouch) > Math.abs(dyTouch)) {
+    if (dxTouch > 0 && dx === 0) { dx = grid; dy = 0; }
+    else if (dxTouch < 0 && dx === 0) { dx = -grid; dy = 0; }
+  } else {
+    if (dyTouch > 0 && dy === 0) { dx = 0; dy = grid; }
+    else if (dyTouch < 0 && dy === 0) { dx = 0; dy = -grid; }
+  }
+
+  touchStartX = null;
+  touchStartY = null;
+}
+
+document.addEventListener('keydown', changeDirection);
+canvas.addEventListener('touchstart', handleTouchStart);
+canvas.addEventListener('touchmove', handleTouchMove);
+
+placeApple();
+setInterval(draw, 150);
+</script>
+</body>
+</html>
