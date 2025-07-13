@@ -2,7 +2,7 @@
 <html lang="ru">
 <head>
   <meta charset="UTF-8" />
-  <title>Змейка с меню и стрелками управления</title>
+  <title>Змейка с адаптивным масштабированием</title>
   <style>
     body {
       font-family: Arial, sans-serif;
@@ -18,11 +18,14 @@
       background: #eee;
       border: 1px solid #000;
       touch-action: none;
+      max-width: 100vw;
+      max-height: 100vh;
     }
     canvas {
       display: block;
       margin: 0 auto;
       background: #eee;
+      /* размер будет задаваться скриптом */
     }
     .menu, .speed-menu, .controls {
       margin-top: 20px;
@@ -33,9 +36,6 @@
       margin: 12px;
       cursor: pointer;
       user-select: none;
-      -webkit-user-select: none;
-      -moz-user-select: none;
-      -ms-user-select: none;
       border-radius: 8px;
       border: 2px solid #333;
       background-color: #fff;
@@ -71,9 +71,6 @@
       box-shadow: 1px 1px 6px rgba(0,0,0,0.3);
       transition: background-color 0.2s;
       user-select: none;
-      -webkit-user-select: none;
-      -moz-user-select: none;
-      -ms-user-select: none;
       line-height: 80px;
       text-align: center;
       padding: 0;
@@ -123,7 +120,7 @@
   <button id="backToMenuBtn">Назад в меню</button>
 </div>
 
-<canvas id="game" width="400" height="400" aria-label="Игровое поле змейки" role="img"></canvas>
+<canvas id="game" aria-label="Игровое поле змейки" role="img"></canvas>
 
 <div id="gameOverMessage" role="alert" aria-live="assertive">
   Игра окончена!<br/>
@@ -148,7 +145,12 @@
 <script>
   const canvas = document.getElementById('game');
   const ctx = canvas.getContext('2d');
-  const box = 20;
+
+  // Фиксированное количество клеток по ширине и высоте
+  const cols = 20;
+  const rows = 20;
+
+  let box; // размер клетки (будет вычисляться динамически)
 
   let snake;
   let direction = 'RIGHT';
@@ -157,8 +159,8 @@
   let gameInterval;
   let speed = 300;
 
-  let edgeDelayTimer = null; // Таймер задержки у края
-  const edgeDelayMs = 300;   // Время задержки в миллисекундах
+  let edgeDelayTimer = null;
+  const edgeDelayMs = 300;
 
   const mainMenu = document.getElementById('mainMenu');
   const speedMenu = document.getElementById('speedMenu');
@@ -178,7 +180,22 @@
   const leftBtn = document.getElementById('leftBtn');
   const rightBtn = document.getElementById('rightBtn');
 
+  function resizeCanvas() {
+    // Вычисляем максимально возможный размер клетки, чтобы вместить 20x20 клеток в окно
+    const maxWidth = window.innerWidth * 0.9;
+    const maxHeight = (window.innerHeight - 200) * 0.9; // минус место под кнопки и меню
+
+    // Размер клетки — минимальный из доступной ширины и высоты, делённый на количество клеток
+    box = Math.floor(Math.min(maxWidth / cols, maxHeight / rows));
+
+    // Устанавливаем размеры canvas
+    canvas.width = box * cols;
+    canvas.height = box * rows;
+  }
+
   function init() {
+    resizeCanvas();
+
     snake = [
       { x: 9 * box, y: 10 * box },
       { x: 8 * box, y: 10 * box },
@@ -195,17 +212,15 @@
   }
 
   function placeFood() {
-    // Чтобы еда не появлялась на змейке
     do {
       food = {
-        x: Math.floor(Math.random() * 20) * box,
-        y: Math.floor(Math.random() * 20) * box,
+        x: Math.floor(Math.random() * cols) * box,
+        y: Math.floor(Math.random() * rows) * box,
       };
     } while (collision(food.x, food.y, snake));
   }
 
   function draw() {
-    // Обновляем направление один раз в начале кадра
     direction = nextDirection;
 
     ctx.fillStyle = '#eee';
@@ -218,6 +233,7 @@
       ctx.fillStyle = i === 0 ? 'green' : 'lime';
       ctx.fillRect(snake[i].x, snake[i].y, box, box);
       ctx.strokeStyle = '#000';
+      ctx.lineWidth = 1;
       ctx.strokeRect(snake[i].x, snake[i].y, box, box);
     }
 
@@ -229,31 +245,21 @@
     else if (direction === 'UP') headY -= box;
     else if (direction === 'DOWN') headY += box;
 
-    // Проверяем выход за границу
     const outOfBounds = headX < 0 || headX >= canvas.width || headY < 0 || headY >= canvas.height;
     const hitsSelf = collision(headX, headY, snake);
 
     if (outOfBounds) {
-      // Если таймер уже запущен - проверяем, успел ли игрок повернуть в безопасном направлении
       if (!edgeDelayTimer) {
-        // Запускаем таймер задержки
         edgeDelayTimer = setTimeout(() => {
-          // Если после задержки змейка всё ещё у границы - конец игры
           gameOver();
         }, edgeDelayMs);
       }
-      // Проверим, может ли текущий nextDirection вывести змейку в безопасное положение
-      // Рассчитаем позицию головы, если повернуть в другую сторону
-      // Если есть возможность повернуть в безопасное направление - сбросим таймер
       if (canTurnAwayFromEdge()) {
         clearTimeout(edgeDelayTimer);
         edgeDelayTimer = null;
       }
-      // Пока не выходим за границу, не добавляем новую голову и не двигаем змейку
-      // Просто рисуем текущее состояние и ждём поворота
       return;
     } else {
-      // Если вышли за границу - сбрасываем таймер
       if (edgeDelayTimer) {
         clearTimeout(edgeDelayTimer);
         edgeDelayTimer = null;
@@ -275,14 +281,8 @@
   }
 
   function canTurnAwayFromEdge() {
-    // Проверяем, можно ли повернуть в безопасном направлении, чтобы не выйти за границу
-    // Для этого проверим все направления, кроме текущего и обратного
-    // Если найдётся направление, при котором голова не выйдет за границу и не врежется в тело — вернём true
-
     const head = snake[0];
     const possibleDirs = ['LEFT', 'UP', 'RIGHT', 'DOWN'];
-
-    // Запрещённые направления: текущее и обратное ему
     const opposite = {
       LEFT: 'RIGHT',
       RIGHT: 'LEFT',
@@ -305,7 +305,6 @@
       const safeY = newY >= 0 && newY < canvas.height;
       const safePos = safeX && safeY && !collision(newX, newY, snake);
 
-      // Если направление совпадает с nextDirection и безопасно — значит игрок уже выбрал безопасный поворот
       if (dir === nextDirection && safePos) {
         return true;
       }
@@ -386,6 +385,32 @@
   });
   rightBtn.addEventListener('click', () => {
     if (direction !== 'LEFT') nextDirection = 'RIGHT';
+  });
+
+  // Обновляем размер canvas при изменении окна
+  window.addEventListener('resize', () => {
+    // Чтобы не ломать положение змейки, пересчитаем координаты змейки и еды
+    // при изменении box
+
+    // Сохраним старый box
+    const oldBox = box;
+    resizeCanvas();
+
+    if (!snake) return;
+
+    // Пересчитаем координаты змейки и еды в новых координатах
+    snake = snake.map(segment => ({
+      x: Math.floor(segment.x / oldBox) * box,
+      y: Math.floor(segment.y / oldBox) * box
+    }));
+
+    food = {
+      x: Math.floor(food.x / oldBox) * box,
+      y: Math.floor(food.y / oldBox) * box
+    };
+
+    // Перерисуем сразу
+    draw();
   });
 </script>
 
