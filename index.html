@@ -2,7 +2,7 @@
 <html lang="ru">
 <head>
   <meta charset="UTF-8" />
-  <title>Змейка с меню и выбором скорости</title>
+  <title>Змейка с меню и стрелками управления</title>
   <style>
     body {
       font-family: Arial, sans-serif;
@@ -10,12 +10,14 @@
       background: #f0f0f0;
       margin: 0;
       padding: 20px;
+      -webkit-tap-highlight-color: transparent; /* убрать подсветку на мобильных */
     }
     #game, #gameOverMessage {
       margin: 20px auto;
       display: none;
       background: #eee;
       border: 1px solid #000;
+      touch-action: none; /* для предотвращения скролла при касании */
     }
     canvas {
       display: block;
@@ -30,10 +32,66 @@
       padding: 10px 20px;
       margin: 10px;
       cursor: pointer;
+      user-select: none;
+      -webkit-user-select: none;
+      -moz-user-select: none;
+      -ms-user-select: none;
     }
     #gameOverMessage {
       font-size: 24px;
       color: red;
+    }
+
+    /* Кнопки управления стрелками */
+    .controls {
+      display: inline-block;
+      margin-top: 15px;
+      user-select: none;
+    }
+
+    .control-row {
+      display: flex;
+      justify-content: center;
+      margin: 5px 0;
+    }
+
+    .arrow-btn {
+      font-size: 30px;
+      width: 60px;
+      height: 60px;
+      margin: 0 10px;
+      border-radius: 10px;
+      border: 2px solid #333;
+      background-color: #fff;
+      cursor: pointer;
+      box-shadow: 1px 1px 4px rgba(0,0,0,0.3);
+      transition: background-color 0.2s;
+      user-select: none;
+      -webkit-user-select: none;
+      -moz-user-select: none;
+      -ms-user-select: none;
+      line-height: 60px;
+      text-align: center;
+      padding: 0;
+    }
+
+    .arrow-btn:active {
+      background-color: #ddd;
+    }
+
+    @media (max-width: 480px) {
+      .arrow-btn {
+        width: 50px;
+        height: 50px;
+        font-size: 24px;
+        margin: 0 8px;
+        line-height: 50px;
+      }
+      button, select {
+        font-size: 16px;
+        padding: 8px 16px;
+        margin: 8px;
+      }
     }
   </style>
 </head>
@@ -49,7 +107,7 @@
 <!-- Меню выбора скорости -->
 <div id="speedMenu" class="speed-menu" style="display:none;">
   <h2>Выберите скорость змейки</h2>
-  <select id="speedSelect">
+  <select id="speedSelect" aria-label="Выбор скорости змейки">
     <option value="300">1 (медленно)</option>
     <option value="270">2</option>
     <option value="240">3</option>
@@ -66,24 +124,27 @@
 </div>
 
 <!-- Игровое поле -->
-<canvas id="game" width="400" height="400"></canvas>
+<canvas id="game" width="400" height="400" aria-label="Игровое поле змейки" role="img"></canvas>
 
 <!-- Сообщение об окончании игры -->
-<div id="gameOverMessage">
+<div id="gameOverMessage" role="alert" aria-live="assertive">
   Игра окончена!<br/>
   <button id="restartBtn">Начать заново</button>
   <button id="exitToMenuBtn">Выйти в меню</button>
 </div>
 
 <!-- Кнопки управления -->
-<div id="controls" class="controls" style="display:none;">
-  <div>
-    <button id="upBtn">↑ Вверх</button>
+<div id="controls" class="controls" style="display:none;" aria-label="Управление змейкой">
+  <div class="control-row">
+    <button id="upBtn" class="arrow-btn" aria-label="Вверх">↑</button>
   </div>
-  <div>
-    <button id="leftBtn">← Влево</button>
-    <button id="downBtn">↓ Вниз</button>
-    <button id="rightBtn">→ Вправо</button>
+  <div class="control-row">
+    <button id="leftBtn" class="arrow-btn" aria-label="Влево">←</button>
+    <div style="width: 60px; display: inline-block;"></div>
+    <button id="rightBtn" class="arrow-btn" aria-label="Вправо">→</button>
+  </div>
+  <div class="control-row">
+    <button id="downBtn" class="arrow-btn" aria-label="Вниз">↓</button>
   </div>
 </div>
 
@@ -210,7 +271,7 @@
     speedMenu.style.display = 'none';
     gameOverMessage.style.display = 'none';
     canvas.style.display = 'block';
-    controls.style.display = 'block';
+    controls.style.display = 'inline-block';
     init();
   });
 
@@ -230,7 +291,7 @@
   restartBtn.addEventListener('click', () => {
     gameOverMessage.style.display = 'none';
     canvas.style.display = 'block';
-    controls.style.display = 'block';
+    controls.style.display = 'inline-block';
     init();
   });
 
