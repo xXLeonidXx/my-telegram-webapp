@@ -10,14 +10,14 @@
       background: #f0f0f0;
       margin: 0;
       padding: 20px;
-      -webkit-tap-highlight-color: transparent; /* убрать подсветку на мобильных */
+      -webkit-tap-highlight-color: transparent;
     }
     #game, #gameOverMessage {
       margin: 20px auto;
       display: none;
       background: #eee;
       border: 1px solid #000;
-      touch-action: none; /* для предотвращения скролла при касании */
+      touch-action: none;
     }
     canvas {
       display: block;
@@ -28,83 +28,83 @@
       margin-top: 20px;
     }
     button, select {
-      font-size: 18px;
-      padding: 10px 20px;
-      margin: 10px;
+      font-size: 20px;
+      padding: 14px 28px;
+      margin: 12px;
       cursor: pointer;
       user-select: none;
       -webkit-user-select: none;
       -moz-user-select: none;
       -ms-user-select: none;
+      border-radius: 8px;
+      border: 2px solid #333;
+      background-color: #fff;
+      box-shadow: 1px 1px 6px rgba(0,0,0,0.3);
+      transition: background-color 0.2s;
+    }
+    button:active {
+      background-color: #ddd;
     }
     #gameOverMessage {
-      font-size: 24px;
+      font-size: 26px;
       color: red;
     }
-
-    /* Кнопки управления стрелками */
     .controls {
       display: inline-block;
       margin-top: 15px;
       user-select: none;
     }
-
     .control-row {
       display: flex;
       justify-content: center;
-      margin: 5px 0;
+      margin: 8px 0;
     }
-
     .arrow-btn {
-      font-size: 30px;
-      width: 60px;
-      height: 60px;
-      margin: 0 10px;
-      border-radius: 10px;
+      font-size: 36px;
+      width: 80px;
+      height: 80px;
+      margin: 0 14px;
+      border-radius: 14px;
       border: 2px solid #333;
       background-color: #fff;
       cursor: pointer;
-      box-shadow: 1px 1px 4px rgba(0,0,0,0.3);
+      box-shadow: 1px 1px 6px rgba(0,0,0,0.3);
       transition: background-color 0.2s;
       user-select: none;
       -webkit-user-select: none;
       -moz-user-select: none;
       -ms-user-select: none;
-      line-height: 60px;
+      line-height: 80px;
       text-align: center;
       padding: 0;
     }
-
     .arrow-btn:active {
       background-color: #ddd;
     }
-
     @media (max-width: 480px) {
       .arrow-btn {
-        width: 50px;
-        height: 50px;
-        font-size: 24px;
-        margin: 0 8px;
-        line-height: 50px;
+        width: 65px;
+        height: 65px;
+        font-size: 28px;
+        margin: 0 10px;
+        line-height: 65px;
       }
       button, select {
-        font-size: 16px;
-        padding: 8px 16px;
-        margin: 8px;
+        font-size: 18px;
+        padding: 12px 24px;
+        margin: 10px;
       }
     }
   </style>
 </head>
 <body>
 
-<!-- Стартовое меню -->
 <div id="mainMenu" class="menu">
   <h1>Змейка</h1>
   <button id="startGameBtn">Старт игры</button>
   <button id="chooseSpeedBtn">Выбор скорости</button>
 </div>
 
-<!-- Меню выбора скорости -->
 <div id="speedMenu" class="speed-menu" style="display:none;">
   <h2>Выберите скорость змейки</h2>
   <select id="speedSelect" aria-label="Выбор скорости змейки">
@@ -123,24 +123,21 @@
   <button id="backToMenuBtn">Назад в меню</button>
 </div>
 
-<!-- Игровое поле -->
 <canvas id="game" width="400" height="400" aria-label="Игровое поле змейки" role="img"></canvas>
 
-<!-- Сообщение об окончании игры -->
 <div id="gameOverMessage" role="alert" aria-live="assertive">
   Игра окончена!<br/>
   <button id="restartBtn">Начать заново</button>
   <button id="exitToMenuBtn">Выйти в меню</button>
 </div>
 
-<!-- Кнопки управления -->
 <div id="controls" class="controls" style="display:none;" aria-label="Управление змейкой">
   <div class="control-row">
     <button id="upBtn" class="arrow-btn" aria-label="Вверх">↑</button>
   </div>
   <div class="control-row">
     <button id="leftBtn" class="arrow-btn" aria-label="Влево">←</button>
-    <div style="width: 60px; display: inline-block;"></div>
+    <div style="width: 80px; display: inline-block;"></div>
     <button id="rightBtn" class="arrow-btn" aria-label="Вправо">→</button>
   </div>
   <div class="control-row">
@@ -154,12 +151,15 @@
   const box = 20;
 
   let snake;
-  let direction;
+  let direction = 'RIGHT';
+  let nextDirection = 'RIGHT';
   let food;
   let gameInterval;
-  let speed = 300; // стартовая скорость
+  let speed = 300;
 
-  // Элементы интерфейса
+  let edgeDelayTimer = null; // Таймер задержки у края
+  const edgeDelayMs = 300;   // Время задержки в миллисекундах
+
   const mainMenu = document.getElementById('mainMenu');
   const speedMenu = document.getElementById('speedMenu');
   const gameOverMessage = document.getElementById('gameOverMessage');
@@ -178,7 +178,6 @@
   const leftBtn = document.getElementById('leftBtn');
   const rightBtn = document.getElementById('rightBtn');
 
-  // Инициализация игры
   function init() {
     snake = [
       { x: 9 * box, y: 10 * box },
@@ -186,31 +185,35 @@
       { x: 7 * box, y: 10 * box },
     ];
     direction = 'RIGHT';
+    nextDirection = 'RIGHT';
     placeFood();
     gameOverMessage.style.display = 'none';
+    edgeDelayTimer = null;
 
     if (gameInterval) clearInterval(gameInterval);
     gameInterval = setInterval(draw, speed);
   }
 
-  // Появление еды
   function placeFood() {
-    food = {
-      x: Math.floor(Math.random() * 20) * box,
-      y: Math.floor(Math.random() * 20) * box,
-    };
+    // Чтобы еда не появлялась на змейке
+    do {
+      food = {
+        x: Math.floor(Math.random() * 20) * box,
+        y: Math.floor(Math.random() * 20) * box,
+      };
+    } while (collision(food.x, food.y, snake));
   }
 
-  // Отрисовка кадра
   function draw() {
+    // Обновляем направление один раз в начале кадра
+    direction = nextDirection;
+
     ctx.fillStyle = '#eee';
     ctx.fillRect(0, 0, canvas.width, canvas.height);
 
-    // Еда
     ctx.fillStyle = 'red';
     ctx.fillRect(food.x, food.y, box, box);
 
-    // Змейка
     for (let i = 0; i < snake.length; i++) {
       ctx.fillStyle = i === 0 ? 'green' : 'lime';
       ctx.fillRect(snake[i].x, snake[i].y, box, box);
@@ -218,7 +221,6 @@
       ctx.strokeRect(snake[i].x, snake[i].y, box, box);
     }
 
-    // Новая позиция головы
     let headX = snake[0].x;
     let headY = snake[0].y;
 
@@ -227,19 +229,42 @@
     else if (direction === 'UP') headY -= box;
     else if (direction === 'DOWN') headY += box;
 
-    // Проверка столкновений
-    if (
-      headX < 0 ||
-      headX >= canvas.width ||
-      headY < 0 ||
-      headY >= canvas.height ||
-      collision(headX, headY, snake)
-    ) {
+    // Проверяем выход за границу
+    const outOfBounds = headX < 0 || headX >= canvas.width || headY < 0 || headY >= canvas.height;
+    const hitsSelf = collision(headX, headY, snake);
+
+    if (outOfBounds) {
+      // Если таймер уже запущен - проверяем, успел ли игрок повернуть в безопасном направлении
+      if (!edgeDelayTimer) {
+        // Запускаем таймер задержки
+        edgeDelayTimer = setTimeout(() => {
+          // Если после задержки змейка всё ещё у границы - конец игры
+          gameOver();
+        }, edgeDelayMs);
+      }
+      // Проверим, может ли текущий nextDirection вывести змейку в безопасное положение
+      // Рассчитаем позицию головы, если повернуть в другую сторону
+      // Если есть возможность повернуть в безопасное направление - сбросим таймер
+      if (canTurnAwayFromEdge()) {
+        clearTimeout(edgeDelayTimer);
+        edgeDelayTimer = null;
+      }
+      // Пока не выходим за границу, не добавляем новую голову и не двигаем змейку
+      // Просто рисуем текущее состояние и ждём поворота
+      return;
+    } else {
+      // Если вышли за границу - сбрасываем таймер
+      if (edgeDelayTimer) {
+        clearTimeout(edgeDelayTimer);
+        edgeDelayTimer = null;
+      }
+    }
+
+    if (hitsSelf) {
       gameOver();
       return;
     }
 
-    // Проверка съедания еды
     if (headX === food.x && headY === food.y) {
       placeFood();
     } else {
@@ -249,7 +274,45 @@
     snake.unshift({ x: headX, y: headY });
   }
 
-  // Проверка столкновения с телом
+  function canTurnAwayFromEdge() {
+    // Проверяем, можно ли повернуть в безопасном направлении, чтобы не выйти за границу
+    // Для этого проверим все направления, кроме текущего и обратного
+    // Если найдётся направление, при котором голова не выйдет за границу и не врежется в тело — вернём true
+
+    const head = snake[0];
+    const possibleDirs = ['LEFT', 'UP', 'RIGHT', 'DOWN'];
+
+    // Запрещённые направления: текущее и обратное ему
+    const opposite = {
+      LEFT: 'RIGHT',
+      RIGHT: 'LEFT',
+      UP: 'DOWN',
+      DOWN: 'UP'
+    };
+
+    for (const dir of possibleDirs) {
+      if (dir === direction || dir === opposite[direction]) continue;
+
+      let newX = head.x;
+      let newY = head.y;
+
+      if (dir === 'LEFT') newX -= box;
+      else if (dir === 'RIGHT') newX += box;
+      else if (dir === 'UP') newY -= box;
+      else if (dir === 'DOWN') newY += box;
+
+      const safeX = newX >= 0 && newX < canvas.width;
+      const safeY = newY >= 0 && newY < canvas.height;
+      const safePos = safeX && safeY && !collision(newX, newY, snake);
+
+      // Если направление совпадает с nextDirection и безопасно — значит игрок уже выбрал безопасный поворот
+      if (dir === nextDirection && safePos) {
+        return true;
+      }
+    }
+    return false;
+  }
+
   function collision(x, y, array) {
     for (let i = 0; i < array.length; i++) {
       if (array[i].x === x && array[i].y === y) return true;
@@ -257,15 +320,14 @@
     return false;
   }
 
-  // Окончание игры
   function gameOver() {
     clearInterval(gameInterval);
+    edgeDelayTimer = null;
     gameOverMessage.style.display = 'block';
     controls.style.display = 'none';
     canvas.style.display = 'none';
   }
 
-  // Запуск игры из меню
   startGameBtn.addEventListener('click', () => {
     mainMenu.style.display = 'none';
     speedMenu.style.display = 'none';
@@ -275,19 +337,16 @@
     init();
   });
 
-  // Показ меню выбора скорости
   chooseSpeedBtn.addEventListener('click', () => {
     mainMenu.style.display = 'none';
     speedMenu.style.display = 'block';
   });
 
-  // Возврат в главное меню из меню скорости
   backToMenuBtn.addEventListener('click', () => {
     speedMenu.style.display = 'none';
     mainMenu.style.display = 'block';
   });
 
-  // Перезапуск игры после окончания
   restartBtn.addEventListener('click', () => {
     gameOverMessage.style.display = 'none';
     canvas.style.display = 'block';
@@ -295,38 +354,38 @@
     init();
   });
 
-  // Выход в меню из экрана Game Over
   exitToMenuBtn.addEventListener('click', () => {
     gameOverMessage.style.display = 'none';
     mainMenu.style.display = 'block';
   });
 
-  // Обработка изменения скорости
   speedSelect.addEventListener('change', () => {
     speed = +speedSelect.value;
+    if (gameInterval) {
+      clearInterval(gameInterval);
+      gameInterval = setInterval(draw, speed);
+    }
   });
 
-  // Управление с клавиатуры
   document.addEventListener('keydown', e => {
     const key = e.key;
-    if ((key === 'ArrowLeft' || key === 'a') && direction !== 'RIGHT') direction = 'LEFT';
-    else if ((key === 'ArrowUp' || key === 'w') && direction !== 'DOWN') direction = 'UP';
-    else if ((key === 'ArrowRight' || key === 'd') && direction !== 'LEFT') direction = 'RIGHT';
-    else if ((key === 'ArrowDown' || key === 's') && direction !== 'UP') direction = 'DOWN';
+    if ((key === 'ArrowLeft' || key === 'a') && direction !== 'RIGHT') nextDirection = 'LEFT';
+    else if ((key === 'ArrowUp' || key === 'w') && direction !== 'DOWN') nextDirection = 'UP';
+    else if ((key === 'ArrowRight' || key === 'd') && direction !== 'LEFT') nextDirection = 'RIGHT';
+    else if ((key === 'ArrowDown' || key === 's') && direction !== 'UP') nextDirection = 'DOWN';
   });
 
-  // Управление кнопками
   upBtn.addEventListener('click', () => {
-    if (direction !== 'DOWN') direction = 'UP';
+    if (direction !== 'DOWN') nextDirection = 'UP';
   });
   downBtn.addEventListener('click', () => {
-    if (direction !== 'UP') direction = 'DOWN';
+    if (direction !== 'UP') nextDirection = 'DOWN';
   });
   leftBtn.addEventListener('click', () => {
-    if (direction !== 'RIGHT') direction = 'LEFT';
+    if (direction !== 'RIGHT') nextDirection = 'LEFT';
   });
   rightBtn.addEventListener('click', () => {
-    if (direction !== 'LEFT') direction = 'RIGHT';
+    if (direction !== 'LEFT') nextDirection = 'RIGHT';
   });
 </script>
 
